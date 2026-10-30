@@ -36,6 +36,43 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
+
+/* V1.0 mobile legibility: type sizes follow each player viewport, not the entire device. */
+#phoneGame .phone-core{container-type:size;}
+#phoneGame .phone-hud{box-sizing:border-box;min-height:0;max-height:35%;overflow:hidden;padding:3px 7px;gap:1px;}
+#phoneGame .phone-hud .phone-line{font-size:clamp(12px,3.7cqw,19px);line-height:1.04;min-height:16px;}
+#phoneGame .phone-hud .phone-goal{font-size:clamp(11px,3.55cqw,19px);line-height:1.06;overflow-wrap:break-word;word-break:normal;hyphens:none;text-wrap:balance;}
+#phoneGame .phone-hud .phone-lose{font-size:clamp(9.5px,2.9cqw,14px);line-height:1.1;overflow-wrap:break-word;word-break:normal;}
+#phoneGame .phone-controls{flex-shrink:0;}
+#phoneGame .phone-transition{font-size:clamp(17px,5cqw,28px);top:18%;}
+#phoneGame .phone-key .key-action{white-space:normal;line-height:1.05;text-align:center;overflow-wrap:break-word;text-overflow:clip;max-height:2.2em;}
+@media(orientation:portrait){
+ #phoneGame.two .phone-controls{flex-basis:clamp(58px,8dvh,72px);padding-top:2px;padding-bottom:2px;}
+ #phoneGame.two .phone-key{min-height:40px;gap:1px;}
+ #phoneGame.two .phone-key .key-name{font-size:clamp(13px,3cqw,19px);}
+ #phoneGame.two .phone-key .key-action{font-size:clamp(10px,2.9cqw,14px);}
+}
+@media(orientation:landscape){
+ #phoneGame.two .phone-hud{max-height:39%;padding:2px 6px;}
+ #phoneGame.two .phone-hud .phone-goal{font-size:clamp(10px,3.3cqw,17px);}
+ #phoneGame.two .phone-hud .phone-lose{font-size:clamp(9px,2.6cqw,13px);}
+}
+
+
+#phoneGame.two ~ .phone-fullscreen{left:4px;right:auto;top:calc(50% - 11px);transform:translateY(-50%);max-width:65px;padding:3px 4px;font-size:9px!important;line-height:1;opacity:.72}
+#phoneGame.two ~ .phone-quit{right:4px;left:auto;top:calc(50% - 11px);transform:translateY(-50%);max-width:52px;padding:3px 5px;font-size:9px!important;line-height:1;opacity:.72}
+
+/* Dedicated, readable story text stays separate from the complete scene art. */
+body.baz-phone .phone-dialogue{font-size:clamp(16px,4.2vw,21px);line-height:1.3;max-height:32dvh;overflow-y:auto;word-break:normal;overflow-wrap:break-word;}
+body.baz-phone .phone-scenehead{font-size:clamp(17px,4.8vw,23px);}
+@media (orientation:landscape){body.baz-phone .phone-dialogue{font-size:clamp(13px,2.2vw,18px);max-height:32dvh;bottom:calc(63px + env(safe-area-inset-bottom));}
+body.baz-phone .phone-scenefooter{min-height:49px;padding-top:3px;padding-bottom:calc(3px + env(safe-area-inset-bottom));}
+body.baz-phone .phone-scenefooter button{padding:7px 7px;font-size:14px;}}
+
+/* Map guidance must not conceal the currently selected stop or its marker. */
+body.baz-phone #phoneScene:has(.map-touch) .phone-dialogue{top:calc(62px + env(safe-area-inset-top));bottom:auto;max-height:70px;padding:5px 9px;font-size:clamp(12px,3vw,15px);line-height:1.2;opacity:.90;}
+body.baz-phone #phoneScene:not(:has(.map-touch)) .phone-dialogue{pointer-events:auto;touch-action:pan-y;}
+@media(orientation:landscape){body.baz-phone #phoneScene:has(.map-touch) .phone-dialogue{top:calc(50px + env(safe-area-inset-top));max-width:48%;right:auto;left:6px;}}
 </style>
   <style>
 :root {
@@ -1420,9 +1457,10 @@ if(s instanceof MapScreen){
     const stop=stopById(s.sel),focusX=stop?.x??WORLD.w/2,focusY=stop?.y??WORLD.h/2;
     let px=w/2-focusX*scale+(full?0:this.mapOffsetX||0),py=h/2-focusY*scale+(full?0:this.mapOffsetY||0);
     if(full){px=(w-WORLD.w*scale)/2;py=(h-WORLD.h*scale)/2}
-    else { // Keep the chosen stop in view, even if it is near the world's edge.
-      px=Math.min(w/2,Math.max(w/2-WORLD.w*scale,px));
-      py=Math.min(h/2,Math.max(h/2-WORLD.h*scale,py));
+    else { // Keep the map canvas filled instead of showing empty gutters at the edges.
+      const worldW=WORLD.w*scale,worldH=WORLD.h*scale;
+      px=worldW<=w?(w-worldW)/2:Math.min(0,Math.max(w-worldW,px));
+      py=worldH<=h?(h-worldH)/2:Math.min(0,Math.max(h-worldH,py));
     }
     return {px,py,scale,w,h};
   },
@@ -1456,9 +1494,9 @@ if(s instanceof MapScreen){
  else {f.append(this.click('CONTINUE',()=>this.send(s,'Enter',true)))}},
  sync(force=false){if(!this.enabled)return;let s=app.screen;if(!s)return;let kind=s instanceof TitleScreen?'title':s instanceof SettingsScreen?'settings':s instanceof PlayScreen?'game':'scene';document.body.classList.toggle('baz-settings',kind==='settings');if(s!==this.screen||kind!==this.kind){this.releaseAll();this.screen=s;this.kind=kind;this.signature='';this.mapOffsetX=0;this.mapOffsetY=0;this.mapView=null;this.mapToggle=null;if(kind==='settings'){phoneShell.replaceChildren();return}if(kind==='game')this.buildGame(s);else if(kind==='scene')this.buildScene(s)}if(kind==='title'){let sig=s.settings.mode+'|'+s.joined.slice(0,2).join(',')+'|'+s.settings.costumes.slice(0,2).join(',')+'|'+s.settings.teams.slice(0,2).join(',')+'|'+settings.phoneSplit;if(sig!==this.signature){this.signature=sig;this.buildTitle(s)}}else if(kind==='game'){const gameArea=phoneShell.querySelector('#phoneGame');if(gameArea?.classList.contains('two'))gameArea.dataset.split=selectedPhoneSplit();let now=performance.now();if(now-this.lastHud>100||force){this.updateGame(s);this.lastHud=now}}else if(kind==='scene'){let now=performance.now();if(now-this.lastHud>100||force){this.updateScene(s);this.lastHud=now}}},
  updateGame(s){let g=s.game,sec=g.phase==='reveal'?null:g.sectionAt(g.music?g.music.beat():0),inGame=sec?.kind==='game';let count=g.games.length;const setText=(el,val)=>{if(el.textContent!==val)el.textContent=val};for(let panel of this.panels){let i=panel.i,p=s.settings.players[i],left='LEFT',right='RIGHT';let ctrl=inGame?sec.tpl.controls:null;let c=Array.isArray(ctrl)?ctrl:[ctrl||'PRESS',ctrl||'PRESS'];if(inGame&&SELECT_TO_CONFIRM.has(sec.tpl.id))c=['LEFT','RIGHT'];if(inGame&&BOTH_GAME_ACTION[sec.tpl.id])c=['LEFT','RIGHT'];left=c[0]||'LEFT';right=c[1]||'RIGHT';setText(panel.buttons[0].querySelector('.key-name'),p.labels[0]);setText(panel.buttons[1].querySelector('.key-name'),p.labels[1]);setText(panel.buttons[0].querySelector('.key-action'),left);setText(panel.buttons[1].querySelector('.key-action'),right);
- let tip=inGame&&(SELECT_TO_CONFIRM.has(sec.tpl.id)||BOTH_GAME_ACTION[sec.tpl.id])?'PRESS BOTH TO '+(BOTH_GAME_ACTION[sec.tpl.id]||'CONFIRM'):'';setText(panel.tip,tip);panel.tip.style.display=tip?'block':'none';let teamBg=g.teams?'linear-gradient('+TEAM_BG[g.teams[i]]+',#22163c)':'';if(panel.core.style.background!==teamBg)panel.core.style.background=teamBg;setText(panel.hud.querySelector('.phone-name'),p.name);setText(panel.hud.querySelector('.phone-score'),g.mode==='survival'?'PANTS '+g.lives[i]:'SOCKS '+g.wins[i]);let goal=inGame?sec.tpl.command:(g.phase==='reveal'?'FINISH!':sec?.kind==='intro'?'ROUND START':sec?.kind==='outro'?'ROUND ENDED':sec?.kind==='speedup'?`${sec.bpm} BPM`:sec?.kind==='disco'?'DANCE BREAK':'NEXT GAME');setText(panel.hud.querySelector('.phone-goal'),goal);setText(panel.hud.querySelector('.phone-lose'),inGame?'LOSE IF: '+(sec.failHint||'you miss the goal'):g.phase==='reveal'?'Tap continue below':' ');
+ let tip=inGame&&(SELECT_TO_CONFIRM.has(sec.tpl.id)||BOTH_GAME_ACTION[sec.tpl.id])?'PRESS BOTH TO '+(BOTH_GAME_ACTION[sec.tpl.id]||'CONFIRM'):'';setText(panel.tip,tip);panel.tip.style.display=tip?'block':'none';let teamBg=g.teams?'linear-gradient('+TEAM_BG[g.teams[i]]+',#22163c)':'';if(panel.core.style.background!==teamBg)panel.core.style.background=teamBg;setText(panel.hud.querySelector('.phone-name'),p.name);setText(panel.hud.querySelector('.phone-score'),g.mode==='survival'?'PANTS '+g.lives[i]:'SOCKS '+g.wins[i]);let goal=inGame?sec.command:(g.phase==='reveal'?'SOCK COUNT':sec?.kind==='intro'?'ROUND START':sec?.kind==='outro'?(sec.over?'GAME OVER':'ROUND FINISHED'):sec?.kind==='speedup'?`${sec.bpm} BPM`:sec?.kind==='disco'?'DANCE BREAK':sec?.kind==='interlude'?(sec.game?.lanes[i]?.s.won?'+1 SOCK THIS ROUND':'NO SOCK THIS ROUND'):'NEXT GAME');setText(panel.hud.querySelector('.phone-goal'),goal);setText(panel.hud.querySelector('.phone-lose'),inGame?'LOSE IF: '+(sec.failHint||'you miss the goal'):g.phase==='reveal'?'Tap continue below':' ');
  let transitionTitle=!inGame&&g.phase!=='reveal'?(sec?.kind==='intro'?(s.chapter?s.chapter.name:'GET READY!'):sec?.kind==='outro'?(sec.over?'GAME OVER':'FINISH!'):sec?.kind==='speedup'?'SPEED UP!':sec?.kind==='disco'?'DISCO TIME!':sec?.kind==='interlude'?'NEXT UP...':''):'';
- setText(panel.transition,transitionTitle);panel.transition.classList.toggle('subtle',!!transitionTitle);
+ setText(panel.transition,'');panel.transition.classList.remove('subtle');
     panel.result.hidden=g.phase!=='reveal'&&!g.done;if(!panel.result.hidden)setText(panel.result,(g.mode==='survival'&&g.lives[i]<=0?'GAME OVER':g.winners?.includes(i)?'WINNER!':g.mode==='survival'?'SURVIVAL OVER':'ROUND OVER')+' · '+g.wins[i]+' SOCK'+(g.wins[i]===1?'':'S'));}
  if(g.phase==='reveal'||g.done){let area=phoneShell.querySelector('#phoneGame');if(area&&!area.querySelector('.phone-continue')){let b=this.click('CONTINUE',()=>this.send(s,'Enter',true),'phone-action phone-continue');b.style.cssText='position:fixed;left:50%;bottom:calc(9px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:8;max-width:190px;min-height:39px;padding:7px 14px;font-size:18px;';area.append(b)}}else phoneShell.querySelector('.phone-continue')?.remove();
  },
@@ -1480,21 +1518,45 @@ if(s instanceof MapScreen){
  }catch(err){if(!this.drawError){console.warn('Phone minigame draw:',err);this.drawError=true}}
  gctx.restore();
  }
- else{const r=g.laneRects()[panel.i];if(g.phase==='reveal'){
-       this.blit(gctx,c,0,0,W,H,'contain');
-     }else if(sec){
-       // A responsive transition illustration built with the original
-       // character drawing function (no 16:9 canvas banner or duplicated text).
-       const t=performance.now()/1000,person=g.players[panel.i];
-       const bg=gctx.createLinearGradient(0,0,w,h);bg.addColorStop(0,'#6746a7');bg.addColorStop(1,'#261541');
+ else {
+       // Mobile transitions and results are composed for EACH player's viewport.
+       // Never crop/scale a 16:9 desktop banner into a portrait player panel.
+       const t=performance.now()/1000, person=g.players[panel.i], reveal=g.phase==='reveal';
+       const bg=gctx.createLinearGradient(0,0,w,h);bg.addColorStop(0,'#6746a7');bg.addColorStop(1,'#25153f');
        gctx.fillStyle=bg;gctx.fillRect(0,0,w,h);
-       gctx.save();gctx.globalAlpha=.18;gctx.strokeStyle='#fff8ec';gctx.lineWidth=2;
-       for(let k=0;k<13;k++){gctx.beginPath();gctx.moveTo(w/2,h*.6);let ang=k*2*Math.PI/13;
-         gctx.lineTo(w/2+Math.cos(ang)*w,h*.6+Math.sin(ang)*h);gctx.stroke()}
+       gctx.save();gctx.globalAlpha=.16;gctx.strokeStyle='#fff8ec';gctx.lineWidth=2;
+       for(let k=0;k<12;k++){const angle=(k/12)*Math.PI*2+t*.07;
+         gctx.beginPath();gctx.moveTo(w*.5,h*.73);
+         gctx.lineTo(w*.5+Math.cos(angle)*Math.max(w,h),h*.73+Math.sin(angle)*Math.max(w,h));gctx.stroke()}
        gctx.restore();
-       const z=Math.max(.27,Math.min(1.15,w/340,h/330));
-       drawDressedPlayer(gctx,person,w/2,h*.86,{size:z,mood:sec.kind==='outro'&&sec.over?'sad':sec.kind==='speedup'?'dizzy':'happy',t,creepy:g.creepy});
-     }}}return}
+       // A compact but accurate victory pile, matching the actual player tally.
+       const count=Math.min(g.wins[panel.i],g.socks[panel.i].length);
+       const numberSize=Math.max(17,Math.min(33,w*.095,h*.17));
+       gctx.textAlign='center';gctx.textBaseline='middle';gctx.lineJoin='round';
+       const tally='SOCKS '+count;
+       gctx.font='bold '+numberSize+'px "Lilita One",sans-serif';
+       gctx.lineWidth=Math.max(3,numberSize*.18);gctx.strokeStyle='#1b1033';
+       gctx.strokeText(tally,w*.5,h*.19,w*.94);gctx.fillStyle='#ffd23f';gctx.fillText(tally,w*.5,h*.19,w*.94);
+       const awarded=sec?.kind==='interlude'&&sec.game?.lanes[panel.i]?.active&&sec.game.lanes[panel.i].s.won===true;
+       if(awarded){const k=Math.max(11,Math.min(19,w*.045));gctx.font='bold '+k+'px "Lilita One",sans-serif';
+         gctx.lineWidth=4;gctx.strokeStyle='#1b1033';gctx.strokeText('+1 THIS GAME',w*.5,h*.32,w*.96);
+         gctx.fillStyle='#fff8ec';gctx.fillText('+1 THIS GAME',w*.5,h*.32,w*.96)}
+       // Use the game's existing illustrated socks; do not replace or strip assets.
+       const maxShown=Math.min(count,14), sockScale=Math.max(.19,Math.min(.40,h/520,w/510));
+       const sockY=h*.60;
+       for(let k=0;k<maxShown;k++){
+         const sock=g.socks[panel.i][k]?.sock;if(!sock)continue;
+         const col=k%7,row=Math.floor(k/7);
+         const sx=w*.54+(col-3)*Math.min(22,w*.055)+(row%2)*5;
+         const sy=sockY-row*25+(col%2)*3;
+         drawSock(gctx,sock,sx,sy,{size:sockScale,angle:(col-3)*.08});
+       }
+       if(count>maxShown){const fs=Math.max(12,Math.min(19,w*.048));gctx.font='bold '+fs+'px "Lilita One",sans-serif';
+         gctx.strokeStyle='#1b1033';gctx.lineWidth=4;gctx.strokeText('+'+(count-maxShown)+' MORE',w*.68,sockY+27,w*.6);
+         gctx.fillStyle='#fff8ec';gctx.fillText('+'+(count-maxShown)+' MORE',w*.68,sockY+27,w*.6)}
+       const z=Math.max(.15,Math.min(.45,w/700,h/580));
+       drawDressedPlayer(gctx,person,w*.24,h*.98,{size:z,mood:reveal&&g.lives[panel.i]<=0&&g.mode==='survival'?'sad':sec?.kind==='outro'&&sec.over?'sad':'happy',t,creepy:g.creepy});
+     }}return}
  if(this.sceneCanvas){const c=this.sceneCanvas,box=c.getBoundingClientRect(),w=Math.max(1,Math.round(box.width*Math.min(devicePixelRatio||1,1.5))),h=Math.max(1,Math.round(box.height*Math.min(devicePixelRatio||1,1.5)));if(c.width!==w||c.height!==h){c.width=w;c.height=h}const context=c.getContext('2d');context.fillStyle='#24153e';context.fillRect(0,0,w,h);if(s instanceof MapScreen){this.drawMap(context,w,h,s)}else if(s instanceof StoryScreen||s instanceof CutsceneScreen){
       // Keep the cinematics legible without showing the desktop subtitle twice.
       // The full wide composition is preserved; the dialogue is separately
@@ -1503,14 +1565,18 @@ if(s instanceof MapScreen){
       backdrop.addColorStop(0,'#526e91');backdrop.addColorStop(0.55,'#39245e');backdrop.addColorStop(1,'#1b1033');
       context.fillStyle=backdrop;context.fillRect(0,0,w,h);
       if(h>w*1.25){
-        // Portrait cinematic: follow the current speaker instead of letterboxing
-        // an entire 16:9 scene into a narrow phone display.
-        const at=s instanceof StoryScreen?s.at(s.music?.beat()??0):null;
-        const focus=s instanceof StoryScreen?(at?.sec?.panel===1?930:640):
-          s instanceof CutsceneScreen?(s.talker>=0?430:s.guest?910:640):640;
-        const z=Math.max(w/W,h/585),sw=Math.min(W,w/z),sh=Math.min(585,h/z);
-        const sx=Math.max(0,Math.min(W-sw,focus-sw/2)),sy=Math.max(0,Math.min(585-sh,390-sh/2));
-        context.drawImage(canvas2,sx*pixelScale,sy*pixelScale,sw*pixelScale,sh*pixelScale,0,0,w,h);
+        // Show ALL of the original cinematic composition. Cropping the wide
+        // scene to fill portrait cut off people and turned dialogue into a zoom.
+        // A subdued copy fills the background without hiding any scene art.
+        context.save();context.globalAlpha=.11;
+        context.drawImage(canvas2,0,0,W*pixelScale,585*pixelScale,0,0,w,h);
+        context.restore();
+        const z=Math.min(w/W,(h-18)/585),dw=W*z,dh=585*z;
+        const dx=(w-dw)/2,dy=(h-dh)/2;
+        context.fillStyle='#1b1033';context.fillRect(dx-3,dy-3,dw+6,dh+6);
+        context.drawImage(canvas2,0,0,W*pixelScale,585*pixelScale,dx,dy,dw,dh);
+        context.strokeStyle='#fff8ec';context.lineWidth=2;
+        context.strokeRect(dx+1,dy+1,dw-2,dh-2);
       }else this.blit(context,c,0,0,W,585,'contain');
     }else{this.blit(context,c,0,0,W,H,'contain')}}},
    drawMap(context,w,h,s){
