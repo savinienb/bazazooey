@@ -816,10 +816,136 @@ function drawHumanFootPuppet(ctx,color,{mood="idle",t=0,creepy=!1}={}){
   drawPuppetFace(ctx,{mood,t,creepy,open,ex1:-6,ey1:-108,r1:10.5,ex2:17,ey2:-110,r2:10.5,mx:10,my:-74,jaw:42,tongueX:30,tearX:-6,tearY:-94});
   ctx.restore();
 }
+function drawBeaverSteve(ctx,color,{mood="idle",t=0,creepy=!1}={}){
+  const fur=creepy?"#63554c":"#7c4b27",darkFur=creepy?"#493e37":"#5c351a",belly=creepy?"#a6988e":"#cfa478",tailCol=creepy?"#3d332c":"#54341e",hatch=creepy?"#261f1a":"#2e1a0d";
+  const twitch=creepy&&Math.sin(t*23)>0.97?0.18:0;
+  const open=creepy?0:mood==="happy"?0.5+0.3*Math.abs(Math.sin(t*9)):mood==="sad"?0.08:0.18+0.08*Math.sin(t*3);
+  ctx.save();
+  ctx.rotate(mood==="sad"?0.12:mood==="dizzy"?Math.sin(t*6)*0.12:twitch);
+  // Wide flat crosshatched beaver tail wagging behind on the left.
+  ctx.save();ctx.translate(-22,-20);ctx.rotate(-0.48+Math.sin(t*3.8)*0.1);
+  blob(ctx,()=>ctx.ellipse(-28,0,34,18,0,0,TAU),tailCol,()=>{
+    ctx.strokeStyle=hatch;ctx.lineWidth=2.4;
+    for(let d=-52;d<=52;d+=11){
+      ctx.beginPath();ctx.moveTo(-28+d,-20);ctx.lineTo(-28+d+18,20);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-28+d,20);ctx.lineTo(-28+d+18,-20);ctx.stroke();
+    }
+  });
+  ctx.restore();
+  // Hind webbed beaver feet resting flat at y=0.
+  for(const x of[-22,22])costumeOval(ctx,x,-5,14,7,darkFur);
+  // Normal furry beaver torso + soft tan belly + small front paws.
+  blob(ctx,()=>ctx.ellipse(0,-54,36,47,0,0,TAU),fur,()=>{
+    ctx.fillStyle=darkFur;ctx.beginPath();ctx.ellipse(-6,-16,38,14,0,0,TAU);ctx.fill();
+  });
+  costumeOval(ctx,4,-50,20,29,belly);
+  const pawBob=mood==="happy"?Math.sin(t*9)*3:0;
+  for(const [px,dir]of[[-17,-1],[22,1]]){
+    ctx.save();ctx.translate(px,-60+pawBob);ctx.rotate(dir*-0.3);
+    blob(ctx,()=>ctx.ellipse(0,0,10,7,0,0,TAU),darkFur);
+    ctx.restore();
+  }
+  // Chubby beaver head with small round ears, snout cheeks, buck teeth, and sunglasses.
+  ctx.save();ctx.translate(4,-114);
+  ctx.rotate(mood==="sad"?0.2:mood==="dizzy"?Math.sin(t*6)*0.18:0);
+  for(const [ex,ey]of[[-25,-26],[25,-26]]){
+    costumeOval(ctx,ex,ey,11,11,fur);
+    costumeOval(ctx,ex,ey,5.5,5.5,belly);
+  }
+  blob(ctx,()=>ctx.ellipse(0,0,37,31,0,0,TAU),fur);
+  // Expressive mouth below buck teeth.
+  if(creepy){
+    ctx.beginPath();ctx.moveTo(-8,17);ctx.quadraticCurveTo(6,22,20,16);ctx.lineWidth=3;ctx.stroke();ctx.lineWidth=4;
+  }else if(open>0.3){
+    ctx.beginPath();ctx.ellipse(6,18,12,8*open,0,0,TAU);ctx.fillStyle=INK;ctx.fill();
+    ctx.beginPath();ctx.ellipse(6,21,7,3.5*open,0,0,TAU);ctx.fillStyle="#ff7a90";ctx.fill();
+  }else{
+    ctx.beginPath();
+    if(mood==="sad")ctx.arc(6,24,10,Math.PI*1.15,Math.PI*1.85);
+    else ctx.arc(6,13,10,0.15*Math.PI,0.85*Math.PI);
+    ctx.lineWidth=3.5;ctx.stroke();
+  }
+  // White beaver buck teeth + rounded tan muzzle cheeks + dark oval nose.
+  costumeBox(ctx,-2,9,7.5,11,2,"#fffdf5");
+  costumeBox(ctx,6.5,9,7.5,11,2,"#fffdf5");
+  costumeOval(ctx,-4,4,11,8,belly);
+  costumeOval(ctx,16,4,11,8,belly);
+  costumeOval(ctx,6,-3,8,5.5,"#23140b");
+  // Cool dark sunglasses!
+  ctx.fillStyle=INK;
+  ctx.beginPath();ctx.roundRect(-27,-19,26,17,5);ctx.roundRect(10,-19,26,17,5);ctx.fill();
+  ctx.beginPath();ctx.moveTo(-2,-12);ctx.lineTo(11,-12);ctx.moveTo(-35,-12);ctx.lineTo(-27,-12);ctx.lineWidth=4;ctx.strokeStyle=INK;ctx.stroke();
+  ctx.fillStyle=creepy?"#180608":"#161322";
+  ctx.beginPath();ctx.roundRect(-24,-16,20,11,3.5);ctx.roundRect(13,-16,20,11,3.5);ctx.fill();
+  // Crisp sunglasses lens shine (or glowing red eyes in creepy mode).
+  if(creepy){
+    circle(ctx,-14,-10.5,2.6,"#ff1a1a",!1);
+    circle(ctx,23,-10.5,2.6,"#ff1a1a",!1);
+  }else{
+    ctx.strokeStyle="rgba(255,255,255,.78)";ctx.lineWidth=2.5;ctx.lineCap="round";
+    for(const lx of[-20,17]){
+      ctx.beginPath();ctx.moveTo(lx,-8);ctx.lineTo(lx+6,-14);ctx.stroke();
+    }
+  }
+  if(mood==="sad"){
+    ctx.beginPath();const ty=2+(t*55)%22;
+    ctx.moveTo(-14,ty-5);ctx.quadraticCurveTo(-8,ty+5,-14,ty+5);ctx.quadraticCurveTo(-20,ty+5,-14,ty-5);
+    ctx.fillStyle="#8ee3ff";ctx.fill();
+  }
+  ctx.restore();
+  ctx.restore();
+}
+function drawHandPuppet(ctx,color,{mood="idle",t=0,creepy=!1}={}){
+  const skin=creepy?"#cbb8b2":"#f3c19d",shade=creepy?"#ab9892":"#dd9f78",nail=creepy?"#dfd2ce":"#ffe8de";
+  const twitch=creepy&&Math.sin(t*23)>0.97?0.16:0;
+  const open=creepy?0:mood==="happy"?0.45+0.25*Math.abs(Math.sin(t*9)):mood==="sad"?0.06:0.16+0.08*Math.sin(t*3);
+  ctx.save();
+  ctx.rotate(mood==="sad"?0.12:mood==="dizzy"?Math.sin(t*6)*0.12:twitch);
+  const drawDigit=(cx,cy,w,len,ang)=>{
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(ang);
+    blob(ctx,()=>ctx.roundRect(-w/2,-len,w,len+14,w/2),skin,()=>{
+      ctx.fillStyle=shade;ctx.fillRect(-w/2,4,w,14);
+    });
+    // Knuckle crease + glossy fingernail near fingertip.
+    ctx.strokeStyle=shade;ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(-w*0.28,-len*0.42);ctx.lineTo(w*0.28,-len*0.42);ctx.stroke();
+    ctx.beginPath();ctx.ellipse(0,-len+w*0.42,w*0.32,w*0.26,0,0,TAU);ctx.fillStyle=nail;ctx.fill();ctx.lineWidth=2.5;ctx.strokeStyle=INK;ctx.stroke();
+    ctx.restore();
+  };
+  // Exactly 4 fingers: 3 upright fingers along the top + 1 side thumb!
+  const wag=(k)=>mood==="happy"?Math.sin(t*8+k*1.1)*0.08:0;
+  drawDigit(-24,-94,18,52,-0.16+wag(0));
+  drawDigit(0,-100,19,60,wag(1));
+  drawDigit(24,-94,18,50,0.16+wag(2));
+  drawDigit(32,-56,17,44,0.88+wag(3));
+  // Bare wrist & fleshy palm with sporty player-color wristband.
+  blob(ctx,()=>{
+    ctx.moveTo(-22,0);
+    ctx.lineTo(-22,-24);
+    ctx.quadraticCurveTo(-39,-36,-38,-68);
+    ctx.quadraticCurveTo(-37,-103,0,-104);
+    ctx.quadraticCurveTo(37,-103,38,-68);
+    ctx.quadraticCurveTo(39,-36,22,-24);
+    ctx.lineTo(22,0);
+    ctx.closePath();
+  },skin,()=>{
+    ctx.fillStyle=color;ctx.fillRect(-28,-20,56,20);
+    ctx.fillStyle="#ffffff";ctx.fillRect(-28,-13,56,5);
+    ctx.strokeStyle=INK;ctx.lineWidth=3.5;
+    ctx.beginPath();ctx.moveTo(-28,-20);ctx.lineTo(28,-20);ctx.stroke();
+  });
+  ctx.save();ctx.strokeStyle=shade;ctx.lineWidth=3;ctx.lineCap="round";
+  ctx.beginPath();ctx.arc(-8,-42,22,Math.PI*0.95,Math.PI*1.38);ctx.stroke();
+  ctx.restore();
+  // Expressive face centered on the palm.
+  drawPuppetFace(ctx,{mood,t,creepy,open,ex1:-13,ey1:-74,r1:10.5,ex2:14,ey2:-74,r2:10.5,mx:-8,my:-45,jaw:24,tongueX:11,tearX:-13,tearY:-60});
+  ctx.restore();
+}
 function drawPuppet(ctx,color,x,y,{size=1,mood="idle",t=0,accent="#ffffff",creepy=!1,costume=0}={}){
  ctx.save();ctx.translate(x,y);ctx.scale(size,size);
  ctx.lineWidth=4;ctx.strokeStyle=INK;
  if(costume===COSTUME_HUMAN_FOOT){drawHumanFootPuppet(ctx,color,{mood,t,creepy});ctx.restore();return;}
+ if(costume===COSTUME_BEAVER){drawBeaverSteve(ctx,color,{mood,t,creepy});ctx.restore();return;}
+ if(costume===COSTUME_HAND){drawHandPuppet(ctx,color,{mood,t,creepy});ctx.restore();return;}
  if(costume) drawCostumeBack(ctx,costume,t);
  blob(ctx,()=>ctx.roundRect(-30,-112,60,112,18),color,()=>{
    ctx.fillStyle=accent;ctx.fillRect(-40,-24,80,8);ctx.fillRect(-40,-11,80,8)
@@ -1258,9 +1384,9 @@ const COSTUME_NAMES=[
  "GUINEA PIG","GOAT IN COAT","DISCO LOBSTER",
  "BROCCOLI BOSS", "COSMIC PICKLE", "BIRTHDAY CAKE",
     "SENTIENT PIZZA", "NEON UFO", "BANANA BANDIT", "RAINBOW DRAGON",
- "HUMAN FOOT", "PRIDE PARADE", "BEAVER STEVE", "GNOCCHI"
+ "HUMAN FOOT", "PRIDE PARADE", "STEVE", "GNOCCHI", "4-FINGER HAND"
 ];
-const COSTUME_HUMAN_FOOT=21,COSTUME_PRIDE=22,COSTUME_BEAVER=23,COSTUME_GNOCCHI=24;
+const COSTUME_HUMAN_FOOT=21,COSTUME_PRIDE=22,COSTUME_BEAVER=23,COSTUME_GNOCCHI=24,COSTUME_HAND=25;
 const PRIDE_STRIPES=["#e40303","#ff8c00","#ffed00","#008026","#004dff","#750787"];
 // Every outfit is drawn in the puppet's own coordinate system. The head layer
 // follows its head rotation, so hat brims always sit above the eyes and snout.
@@ -1334,19 +1460,6 @@ function drawCostumeBack(ctx,c,t){
       PRIDE_STRIPES.forEach((col,k)=>{ctx.fillStyle=col;ctx.fillRect(-44,k*5,46,5.5);});
       ctx.restore();
       costumeOval(ctx,-57,-147,5,5,"#ffd23f");
-    }
-    if(c===COSTUME_BEAVER){
-      // Iconic wide flat crosshatched paddle tail + webbed brown feet.
-      ctx.save();ctx.translate(-22,-22);ctx.rotate(-0.55+Math.sin(t*3.8)*0.1);
-      blob(ctx,()=>ctx.ellipse(-28,0,34,19,0,0,TAU),"#5c3b24",()=>{
-        ctx.strokeStyle="#331e11";ctx.lineWidth=2.3;
-        for(let d=-52;d<=52;d+=11){
-          ctx.beginPath();ctx.moveTo(-28+d,-22);ctx.lineTo(-28+d+18,22);ctx.stroke();
-          ctx.beginPath();ctx.moveTo(-28+d,22);ctx.lineTo(-28+d+18,-22);ctx.stroke();
-        }
-      });
-      ctx.restore();
-      for(const x of[-22,22])costumeOval(ctx,x,-3,13,8,"#633d22");
     }
     if(c===COSTUME_GNOCCHI){
       // Giant silver pasta fork and fresh basil leaves peeking out behind.
@@ -1460,20 +1573,6 @@ function drawCostumeBody(ctx,c,t){
       ctx.restore();
       ctx.beginPath();ctx.roundRect(-28,-105,56,79,16);ctx.lineWidth=3.5;ctx.strokeStyle=INK;ctx.stroke();
       ctx.beginPath();heart(ctx,3,-65,10);ctx.fillStyle="#ffd23f";ctx.fill();ctx.lineWidth=3;ctx.stroke();
-    }else if(c===COSTUME_BEAVER){
-      costumeBox(ctx,-28,-106,56,80,18,"#7b4a29");
-      costumeOval(ctx,0,-63,19,27,"#cfa377");
-      // Red plaid lumberjack neckerchief + chewed wooden twig held in front.
-      costumeBox(ctx,-29,-104,58,15,6,"#d6333a");
-      ctx.save();ctx.beginPath();ctx.roundRect(-29,-104,58,15,6);ctx.clip();
-      ctx.fillStyle="#2b1218";for(let xx=-24;xx<=24;xx+=12)ctx.fillRect(xx,-105,4,17);ctx.fillRect(-30,-98,60,3.5);
-      ctx.restore();
-      costumeBox(ctx,-29,-104,58,15,6,"transparent");
-      ctx.save();ctx.translate(0,-66);ctx.rotate(-0.14);
-      costumeBox(ctx,-23,-5,46,10,4,"#b8834a");
-      costumeOval(ctx,21,0,4,5,"#f4dca9");
-      ctx.restore();
-      for(const px of[-15,15])costumeOval(ctx,px,-64,8,7,"#5e381e");
     }else if(c===COSTUME_GNOCCHI){
       // Pillowy potato gnocchi body with fork-ridge grooves, marinara sauce, and parmesan.
       costumeBox(ctx,-29,-106,58,82,24,"#f5dc9b");
@@ -1611,18 +1710,6 @@ function drawCostumeHead(ctx,c,t){
       PRIDE_STRIPES.forEach((col,k)=>{ctx.fillStyle=col;ctx.fillRect(-34+k*sw,-72,sw+1,15);});
       ctx.restore();
       ctx.beginPath();ctx.roundRect(-34,-71,98,13,6);ctx.lineWidth=3.5;ctx.strokeStyle=INK;ctx.stroke();
-    }else if(c===COSTUME_BEAVER){
-      // Round beaver ears, fuzzy brown crest above eyes, nose button, and iconic buck teeth!
-      for(const[ex,col]of[[-17,"#6c3f21"],[45,"#7b4a29"]]){
-        costumeOval(ctx,ex,-73,15,15,col);
-        costumeOval(ctx,ex,-73,8,9,"#cfa076");
-      }
-      for(const tx of[-10,4,18,32])costumeOval(ctx,tx,-65,11,9,"#7b4a29");
-      // Cheeks, dark brown nose button, and bright white buck teeth at upper snout.
-      costumeOval(ctx,48,-17,12,8,"#cfa377");
-      costumeBox(ctx,50,-14,8,12,2,"#fffdf5");
-      costumeBox(ctx,58,-14,8,12,2,"#fffdf5");
-      costumeOval(ctx,60,-23,7.5,6,"#2c180f");
     }else if(c===COSTUME_GNOCCHI){
       // Three plump ridged gnocchi dumplings piled on the head + marinara + fresh basil leaf!
       const gnocchi=(gx,gy,rx,ry,ang=0)=>{
