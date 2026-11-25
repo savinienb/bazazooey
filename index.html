@@ -1149,19 +1149,24 @@ spinning`])}},start:(p)=>({x:p.x0,y:p.y0,vx:p.vx0,vy:p.vy0,color:0,nudgeAt:-9,di
  };
 }
 {
- const oldStart=blenderLid.start,oldPress=blenderLid.press,oldRelease=blenderLid.release;
- blenderLid.start=function(p){let s=oldStart(p);s.lidHintAt=-9;return s;};
+ const oldStart=blenderLid.start,oldPress=blenderLid.press;
+ blenderLid.controls=["HOLD / BLEND","HOLD / BLEND"];
+ blenderLid.start=function(p){return {...oldStart(p),held:[!1,!1],lidBtn:null};};
  blenderLid.press=function(s,t,p,b){
-   if(b===1&&!s.lid){s.lidHintAt=t;s._waitText="CLOSE THE LID FIRST!";s._waitAt=t;noises6.clunk();return;}
-   return oldPress.call(this,s,t,p,b);
+   if(s.won!==void 0||s.held[b])return;
+   const otherWasDown=s.held[1-b];
+   s.held[b]=!0;
+   if(!otherWasDown){s.lidBtn=b;s.lid=!0;noises6.clunk();return;}
+   if(!s.lid){s.lidBtn=1-b;s.lid=!0;}
+   if(t<p.go){s._waitText="WAIT FOR START";s._waitAt=t;return;}
+   return oldPress.call(this,s,t,p,1);
  };
  blenderLid.release=function(s,t,p,b){
-   if(b===0&&t<s.motorUntil){s.motorUntil=t;}
-   if(b===0){s.lid=!1;return;}
-   return oldRelease.call(this,s,t,p,b);
+   s.held[b]=!1;
+   if(s.held[0]||s.held[1]){if(s.lidBtn===b){s.lidBtn=1-b;s.lid=!0;}return;}
+   if(t<s.motorUntil)s.motorUntil=t;
+   s.lid=!1;s.lidBtn=null;
  };
- const draw=blenderLid.draw;
- blenderLid.draw=function(ctx,s,t,p){draw(ctx,s,t,p);if(t-s.lidHintAt<1.0)text(ctx,"CLOSE THE LID!",200,78,{size:26,color:"#ffd23f",stroke:INK,lineWidth:6});};
 }
 {
  const oldSetup=taxiHail.setup;
@@ -1376,6 +1381,105 @@ return{notes,spb,window:[0.16,0.14,0.12,0.11][level],need:[0.55,0.6,0.65,0.7][le
  tuneSetup(djScratch,(p)=>{p.win=Math.max(p.win,0.36);p.need=Math.min(p.need,0.55);});
  tuneSetup(captcha,(p,d,o)=>{p.go=Math.min(p.go,0.72);p.step=(o.T-0.4-p.go)/9;});
  tuneSetup(boulderStairs,(p)=>{p.air=Math.max(p.air,0.44);});
+ // Early-press warnings and grace recovery for timing-sensitive microgames.
+ {
+  const oldPress=gearShift.press;
+  gearShift.press=function(s,t,p,b){
+   if(t>=p.t0&&s.rpm<p.z0){putt();s.rpm=Math.max(p.from,s.rpm-0.05);s._waitText="WAIT FOR GREEN!";s._waitAt=t;return;}
+   return oldPress.call(this,s,t,p,b);
+  };
+ }
+ {
+  const oldPress=pancakeDuo.press;
+  pancakeDuo.press=function(s,t,p,b){
+   if(t>=p.go){
+    let k=btn5(b),c=s.cakes[k],o=p.cakes[k];
+    if(c.flip===null&&c.burnt===null&&t<o.at-p.win){
+     if(t<(c.waitUntil??-9))return;
+     c.waitUntil=t+0.18;noises6.clunk();s._waitText="NOT GOLDEN YET!";s._waitAt=t;return;
+    }
+   }
+   return oldPress.call(this,s,t,p,b);
+  };
+ }
+ {
+  const oldPress=slothArrival.press;
+  slothArrival.press=function(s,t,p,b){
+   if(t>=p.go&&t-s.moveAt>=p.step&&s.j>=p.S-1&&t<p.open-p.win){
+    s.slowAt=t;noises9.creep();s._waitText="WAIT FOR LUNCH!";s._waitAt=t;return;
+   }
+   return oldPress.call(this,s,t,p,b);
+  };
+ }
+ {
+  const oldPress=swashbuckle.press;
+  swashbuckle.press=function(s,t,p,b){
+   if(t<p.go)return;
+   if(t<(s.coolUntil??-9))return;
+   let i=p.swings.findIndex((w2,k)=>!s.res[k]&&t>=w2.start-0.02&&t<=w2.strike+0.07);
+   if(i>=0&&!p.swings[i].feint&&t<p.swings[i].glint-0.02){
+    s.coolUntil=t+0.15;s.guard=btn14(b);s.guardAt=t;noises17.swish();s._waitText="WAIT FOR GLINT!";s._waitAt=t;return;
+   }
+   return oldPress.call(this,s,t,p,b);
+  };
+ }
+ tuneSetup(bouquetDive,(p)=>{p.w1+=0.12;});
+ {
+  const oldPress=bouquetDive.press;
+  bouquetDive.press=function(s,t,p,b){
+   if(!s.dive&&t>=p.go&&p.tLand-t>p.w1+0.25){
+    noises22.whoosh();s._waitText="WAIT FOR IT TO FALL!";s._waitAt=t;return;
+   }
+   return oldPress.call(this,s,t,p,b);
+  };
+ }
+ tuneSetup(popcornEars,(p)=>{p.full=Math.max(p.go+0.2,p.full-0.14);});
+ {
+  const oldPress=popcornEars.press;
+  popcornEars.press=function(s,t,p,b){
+   if(t>=p.go&&p.pops?.length&&t<p.pops[Math.floor(p.pops.length*0.65)]){
+    sfx.click();s._waitText="STILL POPPING!";s._waitAt=t;return;
+   }
+   return oldPress.call(this,s,t,p,b);
+  };
+ }
+ tuneSetup(livingStatue,(p,d,o)=>{p.go=ready10(o.T);});
+ {
+  const oldPress=livingStatue.press;
+  livingStatue.press=function(s,t,p,b){
+   let i=p.pigeons.findIndex((g,k)=>s.shook[k]===null&&t>=g.land-0.32&&t<=g.poop);
+   if(i>=0&&t<p.pigeons[i].land-0.04){
+    s.shook[i]=t;s.shakeAt=t;noises8.flutter();sfx.whoosh();
+    if(s.shook.every((v)=>v!==null)){settle12(s,t,!0,oneOf(["STATUESQUE!","SHOO-PERB!","ROCK SOLID!","POOP-FREE!"]));sfx.cheer();}
+    return;
+   }
+   return oldPress.call(this,s,t,p,b);
+  };
+ }
+ {
+  const oldPress=flySwat.press;
+  flySwat.press=function(s,t,p,b){
+   if(s.at===null){
+    let who=btn(b),near=p.events.find((e)=>e.kind==="land"&&e.who===who&&t>=e.at-0.15&&t<e.at);
+    if(near){oldPress.call(this,s,near.at+0.01,p,b);s.at=t;return;}
+   }
+   return oldPress.call(this,s,t,p,b);
+  };
+ }
+ {
+  const oldPress=highFive.press;
+  highFive.press=function(s,t,p,b){
+   let bb=btn2(b),h=s.held;
+   if(h&&h.b!==bb&&t-h.at<=CHORD){
+    let tc=(h.at+t)/2;
+    let inReal=p.fives.some((f,i)=>f.kind==="real"&&s.hit[i]===null&&Math.abs(tc-f.at)<=p.win);
+    let inFake=p.fives.some((f)=>f.kind==="fake"&&tc>f.at-p.approach&&tc<f.at+0.4);
+    let upcomingReal=p.fives.some((f,i)=>f.kind==="real"&&s.hit[i]===null&&tc<f.at-p.win);
+    if(!inReal&&!inFake&&upcomingReal){s.held=null;sfx.whoosh();s._waitText="WAIT FOR THE HAND!";s._waitAt=t;return;}
+   }
+   return oldPress.call(this,s,t,p,b);
+  };
+ }
 }
 var MODES={party:{name:"PARTY",games:20,lives:0,perStage:3},survival:{name:"SURVIVAL",games:1/0,lives:4,perStage:3},story:{name:"STORY",games:3,lives:0,perStage:2,interlude:6}},TEMPOS={party:[116,132,150,170],survival:[116,132,150,170,180],story:[112,126,142,158]},BONUS_EVERY=5,BEATS={intro:8,interlude:4,speedup:8,disco:16,game:8,outro:8},VIEW={w:400,h:520},LANES={top:92,bottom:652,side:16,gap:12,tag:116,maxW:900},COMMAND_BEATS=2,LEVEL_BG=["#5b2a86","#1f6f8b","#1e8c5a","#b8325c"],LOGO_COLORS2=["#ffd23f","#ff4d5e","#3d8bff","#2ecc71","#ff8fc7","#9b5de5"],BEST_KEY="bazazooey.best",tempoFor=(mode,stage)=>Math.max(1,Math.min(200,settings.startBpm+TEMPOS[mode][stage]-TEMPOS[mode][0]));function loadBest(n){try{return JSON.parse(localStorage.getItem(BEST_KEY))?.[n]??0}catch{return 0}}function saveBest(n,value){try{let all=JSON.parse(localStorage.getItem(BEST_KEY))??{};all[n]=value,localStorage.setItem(BEST_KEY,JSON.stringify(all))}catch{}}const TEAM_BG=["rgba(61,139,255,.32)","rgba(255,184,28,.30)","rgba(46,204,113,.30)","rgba(177,96,255,.30)"],TEAM_NAMES=["TEAM A","TEAM B","TEAM C","TEAM D"],TEAM_EDGE=["rgba(61,139,255,.65)","rgba(255,184,28,.65)","rgba(46,204,113,.65)","rgba(177,96,255,.65)"];
 const COSTUME_NAMES=[
@@ -1736,7 +1840,7 @@ function drawDressedPlayer(ctx,player,x,y,opts={}){
  drawPuppet(ctx,player.color,x,y,{...opts,costume:player.costume??0});
 }
 
-const FAILURE_HINTS={"pants-on":"you miss the landing spot or the pants fall too far","inflate":"you underfill or burst the trousers","catch-pants":"the falling pants miss your basket","odd-sock":"you pick a sock with a twin after the sweep, or run out of time","count-socks":"you count too many or miss a matching sock","dont-press":"you press either button","duel":"you fire before DRAW or wait too long","nose-pick":"your finger misses the nostril","cookie-heist":"Grandma catches you or you fail to grab enough cookies","pillow-fight":"you block the wrong side or take a pillow hit","tp-unroll":"you repeat a side or run out of time","fly-swat":"you swat the wrong person or hit before the fly lands","dog-walk":"you leave the safe path or fall","grandma-skate":"you hit a cat or an overhead obstacle","weightlift":"you tilt the bar too far or cannot lift it","belly-flop":"you land at the wrong angle","sock-curling":"the curling sock misses the bullseye","seagull-tug":"the gull escapes with the sock","ufo-pants":"the beam misses the trousers","bean-rocket":"you miss the moon landing","road-cross":"you repeat a foot or get struck crossing","bee-pants":"you shake the wrong leg or leave the bee inside","giraffe-scarf":"you stretch the scarf too far or run out of time","volcano-socks":"you let a hot sock fall past you","pigeon-copy":"you repeat the wings in the wrong order or too late","puppet-says":"you act without PUPPET SAYS or pick the wrong side","sock-or-croissant":"you classify an item incorrectly","pants-shuffle":"you pick the wrong hiding spot","no-pants-lineup":"you accuse the wrong character","girlfriend":"you choose the wrong answer","boyfriend":"you choose the wrong answer","sock-roomba":"you miss socks or hit the obstacles","safe-crack":"you stop on the wrong dial positions","sock-slots":"you stop a reel on the wrong symbol","umbrella":"the umbrella stays closed during rain, birds, or socks, or stays open in sunshine","morse":"your dots and dashes do not match the message","pet-cat":"you pet too quickly or fail to calm the cat","high-five":"the two hands are not pressed together in time","sugar-cubes":"you add too many or too few cubes","juggle":"a sock falls because you catch with the wrong hand or miss the beat","plate-spin":"a plate slows down or spins too fast","egg-timer":"you stop before or after the target time","gear-shift":"you shift outside the green RPM band","knock-knock":"you copy the knock timing incorrectly","swing-pump":"you cannot build enough swing before time runs out","lockpick":"you pick without enough tension or jam the lock","cheat-code":"you enter the wrong button sequence","tension-pull":"you snap the sock by pulling too hard or run out of time","park-scooter":"you miss the parking spot or crash","follow-paws":"you choose a paw trail that leads astray","photo-booth":"you shoot while someone's face is not ready","auction":"you overbid or lose the sock auction","karaoke":"you miss the correct note for too long","dizzy-walk":"Grandpa falls before reaching the bench","gravity-flip":"you collide with a hazard or miss your goal","orbit-sling":"you release the orbiting object off target","zero-g-burrito":"you collide with the wrong food or miss the burrito","alien-pants":"you choose trousers that do not fit","pancake-duo":"a pancake burns or is flipped too early","sandwich-stack":"a sandwich layer falls out of line","hot-sauce":"you eat the wrong number of chillies or overheat","popcorn-ears":"you stop popping at the wrong moment","blender-lid":"you do not hold the lid long enough to finish blending","scarecrow":"crows reach the field before you shoo them","pumpkin-twins":"either pumpkin gets too much or too little water","egg-spoon":"you drop the egg or lose the race","windmill-dash":"a windmill blade hits you","rooster-snooze":"you wake up instead of staying asleep","elevator-doors":"you admit a troublemaker or reject a friendly visitor","living-statue":"you move before it is safe","taxi-hail":"you choose an occupied taxi or miss your ride","traffic-cop":"you cause a crash or fail to let enough cars through","vine-swing":"you miss the sock while swinging","croc-dentist":"you brush the wrong tooth and get bitten","chameleon":"you fail to match the background colour","sloth-arrival":"you reach lunch too early or too late","piranha-stones":"you fail to hop across before the timer ends","snowman-stack":"a snowball is too large, too small or unfinished","yeti-hide":"you stand in the light when the yeti looks","slalom-gates":"you miss a slalom gate","yellow-snow":"you miss the flakes or catch the wrong thing","thin-ice":"you stride onto fragile ice and fall in","duck-dive":"you miss two wave ducks or run out of time","the-barrel":"you leave the light and fall","sandcastle-tide":"the waves wash away the unfinished castle","caravan-reverse":"you collide with something or miss the space","bumper-cars":"your car is bumped out first","hot-air-balloon":"you miss the field, land too fast, or drift away","train-switch":"the train runs down the wrong track","tractor-wheelie":"you flip over or cannot climb the hill","penguin-huddle":"you get separated from the warm huddle","penguin-conga":"the conga line hits an obstacle","present-drop":"a present misses its landing spot","aerial-tune":"the telly stays out of tune","trampoline-flip":"you land without doing the requested flip","pigeon-darts":"your dart misses the bullseye","fitting-room":"your outfit fails to match the mannequin","revolving-door":"you enter an occupied compartment or leave by the wrong exit","what-changed":"you pick the wrong half of the scene","milkshake-foam":"you fill below the line or overflow","gift-wrap":"the paper is too short or too long","cannon-powder":"you fire before getting the exact powder amount or never fire","blind-dig":"you dig at the wrong spot","swashbuckle":"you miss the pirate’s jump side, fall for a feint, or press before the glint","spyglass":"you do not find the sock flag in time","recoil-dock":"you fail to park the ship safely","limbo":"you touch the bar or fail to clear it","mirror-beam":"the spotlight misses Grandpa","crowd-surf":"you fall before reaching the stage","lit-tiles":"you step on an unlit tile","dj-scratch":"your records fall too far out of sync","boulder-stairs":"the boulder catches you before you jump","tangled-ropes":"you pull a rope that triggers a trap","knife-wheel":"you hit Grandma or miss too many socks","seal-ball":"you lean the wrong way and fall","fire-hoops":"you miss a hoop while flapping up and down","sawing-grandma":"the two halves do not line up","cotton-candy":"you twirl the wrong way or make too little floss","ghost-photo":"you photograph Grandpa instead of the ghosts","pumpkin-carve":"you carve the wrong part of the face","skeleton-dress":"you fail to dress all three sets in socks-to-hat order","chandelier":"Grandpa loses his grip and falls","bouquet-dive":"you dive too soon, too late or in the wrong direction","vows-lipsync":"your mouth movements miss the vows","dance-dip":"you miss the photo pose or dip at the wrong time","seating-chart":"you seat two feuding guests together","input-lag":"the delayed step hits an error","captcha":"you skip a required square or select a wrong one","copy-paste":"you paste the wrong picture or miss a missing slot","screensaver":"the moving logo never reaches the corner"};
+const FAILURE_HINTS={"pants-on":"you miss the landing spot or the pants fall too far","inflate":"you underfill or burst the trousers","catch-pants":"the falling pants miss your basket","odd-sock":"you pick a sock with a twin after the sweep, or run out of time","count-socks":"you count too many or miss a matching sock","dont-press":"you press either button","duel":"you fire before DRAW or wait too long","nose-pick":"your finger misses the nostril","cookie-heist":"Grandma catches you or you fail to grab enough cookies","pillow-fight":"you block the wrong side or take a pillow hit","tp-unroll":"you repeat a side or run out of time","fly-swat":"you swat the wrong person or hit before the fly lands","dog-walk":"you leave the safe path or fall","grandma-skate":"you hit a cat or an overhead obstacle","weightlift":"you tilt the bar too far or cannot lift it","belly-flop":"you land at the wrong angle","sock-curling":"the curling sock misses the bullseye","seagull-tug":"the gull escapes with the sock","ufo-pants":"the beam misses the trousers","bean-rocket":"you miss the moon landing","road-cross":"you repeat a foot or get struck crossing","bee-pants":"you shake the wrong leg or leave the bee inside","giraffe-scarf":"you stretch the scarf too far or run out of time","volcano-socks":"you let a hot sock fall past you","pigeon-copy":"you repeat the wings in the wrong order or too late","puppet-says":"you act without PUPPET SAYS or pick the wrong side","sock-or-croissant":"you classify an item incorrectly","pants-shuffle":"you pick the wrong hiding spot","no-pants-lineup":"you accuse the wrong character","girlfriend":"you choose the wrong answer","boyfriend":"you choose the wrong answer","sock-roomba":"you miss socks or hit the obstacles","safe-crack":"you stop on the wrong dial positions","sock-slots":"you stop a reel on the wrong symbol","umbrella":"the umbrella stays closed during rain, birds, or socks, or stays open in sunshine","morse":"your dots and dashes do not match the message","pet-cat":"you pet too quickly or fail to calm the cat","high-five":"the two hands are not pressed together in time","sugar-cubes":"you add too many or too few cubes","juggle":"a sock falls because you catch with the wrong hand or miss the beat","plate-spin":"a plate slows down or spins too fast","egg-timer":"you stop before or after the target time","gear-shift":"you redline the engine or run out of time","knock-knock":"you copy the knock timing incorrectly","swing-pump":"you cannot build enough swing before time runs out","lockpick":"you pick without enough tension or jam the lock","cheat-code":"you enter the wrong button sequence","tension-pull":"you snap the sock by pulling too hard or run out of time","park-scooter":"you miss the parking spot or crash","follow-paws":"you choose a paw trail that leads astray","photo-booth":"you shoot while someone's face is not ready","auction":"you overbid or lose the sock auction","karaoke":"you miss the correct note for too long","dizzy-walk":"Grandpa falls before reaching the bench","gravity-flip":"you collide with a hazard or miss your goal","orbit-sling":"you release the orbiting object off target","zero-g-burrito":"you collide with the wrong food or miss the burrito","alien-pants":"you choose trousers that do not fit","pancake-duo":"a pancake burns before you flip it","sandwich-stack":"a sandwich layer falls out of line","hot-sauce":"you eat the wrong number of chillies or overheat","popcorn-ears":"you stop popping at the wrong moment","blender-lid":"you overfill the jar or fail to finish blending","scarecrow":"crows reach the field before you shoo them","pumpkin-twins":"either pumpkin gets too much or too little water","egg-spoon":"you drop the egg or lose the race","windmill-dash":"a windmill blade hits you","rooster-snooze":"you wake up instead of staying asleep","elevator-doors":"you admit a troublemaker or reject a friendly visitor","living-statue":"you move before it is safe","taxi-hail":"you choose an occupied taxi or miss your ride","traffic-cop":"you cause a crash or fail to let enough cars through","vine-swing":"you miss the sock while swinging","croc-dentist":"you brush the wrong tooth and get bitten","chameleon":"you fail to match the background colour","sloth-arrival":"you miss lunchtime before time runs out","piranha-stones":"you fail to hop across before the timer ends","snowman-stack":"a snowball is too large, too small or unfinished","yeti-hide":"you stand in the light when the yeti looks","slalom-gates":"you miss a slalom gate","yellow-snow":"you miss the flakes or catch the wrong thing","thin-ice":"you stride onto fragile ice and fall in","duck-dive":"you miss two wave ducks or run out of time","the-barrel":"you leave the light and fall","sandcastle-tide":"the waves wash away the unfinished castle","caravan-reverse":"you collide with something or miss the space","bumper-cars":"your car is bumped out first","hot-air-balloon":"you miss the field, land too fast, or drift away","train-switch":"the train runs down the wrong track","tractor-wheelie":"you flip over or cannot climb the hill","penguin-huddle":"you get separated from the warm huddle","penguin-conga":"the conga line hits an obstacle","present-drop":"a present misses its landing spot","aerial-tune":"the telly stays out of tune","trampoline-flip":"you land without doing the requested flip","pigeon-darts":"your dart misses the bullseye","fitting-room":"your outfit fails to match the mannequin","revolving-door":"you enter an occupied compartment or leave by the wrong exit","what-changed":"you pick the wrong half of the scene","milkshake-foam":"you fill below the line or overflow","gift-wrap":"the paper is too short or too long","cannon-powder":"you fire before getting the exact powder amount or never fire","blind-dig":"you dig at the wrong spot","swashbuckle":"you miss the pirate’s jump side, fall for a feint, or press before the glint","spyglass":"you do not find the sock flag in time","recoil-dock":"you fail to park the ship safely","limbo":"you touch the bar or fail to clear it","mirror-beam":"the spotlight misses Grandpa","crowd-surf":"you fall before reaching the stage","lit-tiles":"you step on an unlit tile","dj-scratch":"your records fall too far out of sync","boulder-stairs":"the boulder catches you before you jump","tangled-ropes":"you pull a rope that triggers a trap","knife-wheel":"you hit Grandma or miss too many socks","seal-ball":"you lean the wrong way and fall","fire-hoops":"you miss a hoop while flapping up and down","sawing-grandma":"the two halves do not line up","cotton-candy":"you twirl the wrong way or make too little floss","ghost-photo":"you photograph Grandpa instead of the ghosts","pumpkin-carve":"you carve the wrong part of the face","skeleton-dress":"you fail to dress all three sets in socks-to-hat order","chandelier":"Grandpa loses his grip and falls","bouquet-dive":"you dive too soon, too late or in the wrong direction","vows-lipsync":"your mouth movements miss the vows","dance-dip":"you miss the photo pose or dip at the wrong time","seating-chart":"you seat two feuding guests together","input-lag":"the delayed step hits an error","captcha":"you skip a required square or select a wrong one","copy-paste":"you paste the wrong picture or miss a missing slot","screensaver":"the moving logo never reaches the corner"};
 const SELECT_TO_CONFIRM=new Set(); // All binary choice games accept LEFT or RIGHT immediately.
 const BOTH_GAME_ACTION={"tangled-ropes":"PULL","tetro-fit":"DROP"};
 const CONTROL_TIPS={"caravan-reverse":"NUDGE FORWARD","blind-dig":"DIG","sock-invaders":"FIRE","cannon-powder":"BOTH: FIRE"};
@@ -1757,6 +1861,16 @@ function gameInputWait(id,s,t,p,b){
  if(id==="pigeon-darts"&&((b===0&&s.lx!==null)||(b===1&&s.ly!==null)))return "USE THE OTHER BUTTON";
  if(id==="high-five"&&s.held&&s.held.b===b)return "USE BOTH BUTTONS";
  if(id==="cannon-powder"&&t<p.go)return "WAIT FOR THE CANNON";
+ if(id==="blender-lid"&&!s.lid)return null;
+ if(id==="duel"&&p.cues?.length&&t<p.cues[0].at)return "WAIT FOR CUES";
+ if(id==="fly-swat"&&p.events?.length&&t<p.events[0].at-p.hop)return "WAIT FOR THE FLY";
+ if(id==="living-statue"&&p.pigeons?.length&&t<p.pigeons[0].land-0.35)return "WAIT FOR THE PIGEON";
+ if(id==="high-five"&&p.fives?.length&&t<p.fives[0].at-p.approach)return "WAIT FOR HIGH FIVE";
+ if(id==="bouquet-dive"&&t<p.tossAt)return "WAIT FOR THE TOSS";
+ if(id==="gear-shift"&&t<p.t0)return "WAIT FOR START";
+ if((id==="girlfriend"||id==="boyfriend")&&t<p.show)return "READ THE QUESTION";
+ if(id==="dont-press"&&t<Math.min(1.25,0.25*p.T))return "HANDS OFF!";
+ if(id==="photo-booth"&&t<Math.min(1.2,0.25*p.T))return "WAIT FOR POSE";
  if(p.go!==void 0&&t<p.go)return "WAIT FOR START";
  return null;
 }
